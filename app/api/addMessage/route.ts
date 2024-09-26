@@ -25,7 +25,12 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     const threadId = data.threadId;
     const input = data.input;
-    const fileIds = data.fileIds; // This is the new line
+    const fileIds = data.fileIds.map((file_id: string) => ({ 
+      file_id,
+      tools: [{
+        type: 'file_search'
+      }] 
+    })) || []; // This is the new line
 
     // Log the received thread ID, input, and fileIds for debugging purposes
     console.log(`inside add_Message -Thread ID: ${threadId}`);
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest) {
       await openai.beta.threads.messages.create(threadId, {
         role: "user",
         content: input,
-        file_ids: fileIds || [], // This is the new line
+        attachments: fileIds,
       });
       console.log("add_Message successfully");
       return NextResponse.json({ message: "Message created successfully" });
