@@ -2,7 +2,7 @@
 
 "use client";
 
-import { LinkBar, MessageList, WelcomeForm, InputForm } from './components';
+import { LinkBar, MessageList, WelcomeForm, InputForm, History } from './components';
 import { useChatState, useChatManager, useStartAssistant } from './hooks';
 
 export default function Chat() {
@@ -32,11 +32,13 @@ export default function Chat() {
     chatUploadedFiles = [], setChatUploadedFiles,
     chatFileDetails, setChatFileDetails,
     fileIds, setFileIds,
+    threadHistory,
+    setThreadId,
+    threadId
   } = useChatState();
-
   useChatManager(setChatMessages, setStatusMessage, setChatManager, setIsMessageLoading, setProgress, setIsLoadingFirstMessage);
-  useStartAssistant(assistantId, chatManager, initialThreadMessage);
-
+  useStartAssistant(assistantId, chatManager, initialThreadMessage, threadId || "");
+  
   const startChatAssistant = async () => {
     setIsButtonDisabled(true);
     setStartLoading(true);
@@ -64,14 +66,17 @@ export default function Chat() {
   };
 
   return (
-    <main className="flex flex-col items-center justify-between pb-40 bg-space-grey-light">
-      <LinkBar />
-      {chatHasStarted || assistantId || isLoadingFirstMessage  ? (
-        <MessageList chatMessages={chatMessages} statusMessage={statusMessage} isSending={isSending} progress={progress} isFirstMessage={isLoadingFirstMessage} fileDetails={chatFileDetails} />
-      ) : (
-        <WelcomeForm {...{assistantName, setAssistantName, assistantDescription, setAssistantDescription, assistantModel, setAssistantModel, startChatAssistant, isButtonDisabled, isStartLoading, statusMessage, fileIds, setFileIds}} />
-      )}
-      <InputForm {...{input: inputmessage, setInput: setInputmessage, inputRef, formRef, disabled: isButtonDisabled || !chatManager, chatStarted: chatMessages.length > 0, isSending, isLoading: isMessageLoading, chatUploadedFiles, setChatUploadedFiles, chatFileDetails, setChatFileDetails, chatManager, setChatStarted, setChatMessages, setStatusMessage, setIsSending, setProgress, setIsLoadingFirstMessage}} />
-    </main>
+    <div className='flex'>
+      <History threadHistory={threadHistory} setThreadId={setThreadId}/>
+      <main className="flex flex-1 flex-col items-center pb-40 bg-space-grey-light relative">
+        <LinkBar />
+        {chatHasStarted || assistantId || isLoadingFirstMessage  ? (
+          <MessageList chatMessages={chatMessages} statusMessage={statusMessage} isSending={isSending} progress={progress} isFirstMessage={isLoadingFirstMessage} fileDetails={chatFileDetails} />
+        ) : (
+          <WelcomeForm {...{assistantName, setAssistantName, assistantDescription, setAssistantDescription, assistantModel, setAssistantModel, startChatAssistant, isButtonDisabled, isStartLoading, statusMessage, fileIds, setFileIds}} />
+        )}
+        <InputForm {...{input: inputmessage, setInput: setInputmessage, inputRef, formRef, disabled: isButtonDisabled || !chatManager, chatStarted: chatMessages.length > 0, isSending, isLoading: isMessageLoading, chatUploadedFiles, setChatUploadedFiles, chatFileDetails, setChatFileDetails, chatManager, setChatStarted, setChatMessages, setStatusMessage, setIsSending, setProgress, setIsLoadingFirstMessage}} />
+      </main>
+    </div>
   );
 }

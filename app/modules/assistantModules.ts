@@ -97,9 +97,24 @@ export const initializeAssistant = async (assistantDetails: AssistantDetails, fi
 */
 export const createChatThread = async (inputMessage: string): Promise<string> => {
   console.log('Creating chat thread...');
+
   const threadData: ThreadDataResponse = await createThread(inputMessage);
-  console.log('Chat thread created successfully. Thread ID:', threadData.threadId);
-  return threadData.threadId;
+  const newThreadId = threadData.threadId;
+  console.log('Chat thread created successfully. Thread ID:', newThreadId);
+
+  // Obtener el array de threads del localStorage o inicializarlo si no existe
+  const savedThreads = JSON.parse(localStorage.getItem('chatThreads') || '[]');
+
+  // Verificar si el nuevo ID ya existe
+  const threadExists = savedThreads.some((thread: { id: string }) => thread.id === newThreadId);
+
+  // Si no existe, añadir el nuevo ID al array
+  if (!threadExists) {
+    savedThreads.push({ id: newThreadId });
+    localStorage.setItem('chatThreads', JSON.stringify(savedThreads));
+  }
+
+  return newThreadId;
 };
 
 

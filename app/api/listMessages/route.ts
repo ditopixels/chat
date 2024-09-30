@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Assistant message is not text, only text supported in this demo" });
     }
     // Return the retrieved messages as a JSON response
-    return NextResponse.json({ ok: true, messages: assistantMessageContent.text.value });
+    return NextResponse.json({ ok: true, messages: assistantMessageContent.text.value, historyMessages: messages.data });
   } catch (error) {
     // Log any errors that occur during the process
     console.error(`Error occurred: ${error}`);

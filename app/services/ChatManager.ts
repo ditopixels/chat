@@ -65,6 +65,27 @@ class ChatManager {
     return this.state.messages;
   }
 
+  private updateLocalStorage(threadId: string, messages: any[]): void {
+    // Get existing chatThreads from localStorage
+    const chatThreads = JSON.parse(localStorage.getItem('chatThreads') || '[]');
+    
+    // Find the thread by id in the chatThreads
+    const threadIndex = chatThreads.findIndex((thread: any) => thread.id === threadId);
+  
+    if (threadIndex !== -1) {
+      // If thread exists, add or update the messages key
+      chatThreads[threadIndex].messages = messages;
+    } else {
+      // If thread does not exist, add a new thread with the id and messages
+      chatThreads.push({ id: threadId, messages: messages });
+    }
+  
+    // Store the updated chatThreads back to localStorage
+    localStorage.setItem('chatThreads', JSON.stringify(chatThreads));
+    
+  }
+  
+
   // Method to get the singleton instance of the ChatManager
   public static getInstance(setChatMessages: (messages: any[]) => void, setStatusMessage: (message: string) => void, setProgress: (progress: number) => void, setIsLoadingFirstMessage: (isLoading: boolean) => void): ChatManager { // Add setIsLoadingFirstMessage here
     if (this.instance === null) {
@@ -129,8 +150,11 @@ class ChatManager {
         this.state.setStatusMessage('Received messages...');
         
         // Add the assistant's response to the messages
-        const newMessage = { role: 'assistant', content: response };
+        const newMessage = { role: 'assistant', content: response.message };
         this.state.setStatusMessage('Adding messages to chat...');
+
+        // Update the localStorage with the new messages
+        this.updateLocalStorage(this.state.threadId as string, this.state.messages);
         
         this.state.messages = [...this.state.messages, newMessage];
         this.state.setChatMessages(this.state.messages);
@@ -152,7 +176,7 @@ class ChatManager {
   }
 
 // Method to start the assistant with a given ID
-async startAssistantWithId(assistantId: string, initialMessage: string): Promise<void> {
+async startAssistantWithId(assistantId: string, initialMessage: string, initialThreadId?: string): Promise<void> {
   try {
 
     this.state.setIsLoadingFirstMessage(true);
@@ -160,7 +184,9 @@ async startAssistantWithId(assistantId: string, initialMessage: string): Promise
     this.state.setStatusMessage('Creating thread...');
     this.state.setProgress(10); // Set progress to 10%
     this.state.assistantId = assistantId;
-    const threadId = await createChatThread(initialMessage);
+    let threadId = initialThreadId;
+    if(!threadId) threadId = await createChatThread(initialMessage)
+
     if (threadId === null) {
       throw new Error('ThreadId is null');
     }
@@ -171,34 +197,54 @@ async startAssistantWithId(assistantId: string, initialMessage: string): Promise
     this.state.setStatusMessage('Running assistant...');
     this.state.setProgress(30); // Set progress to 30%
     this.state.threadId = threadId;
-    const runId = await runChatAssistant(this.state.assistantId, this.state.threadId);
-    if (runId === null) {
-      throw new Error('RunId is null');
-    }
 
-    this.state.runId = runId; 
+    if(!initialThreadId){
+      const runId = await runChatAssistant(this.state.assistantId, this.state.threadId);
+      if (runId === null) {
+        throw new Error('RunId is null');
+      }
+  
+      this.state.runId = runId; 
+    }
     this.state.setStatusMessage('Received Run_ID..');
     this.state.setProgress(40); // Set progress to 40%
 
     // Fetch the assistant's response
-    if (this.state.runId && this.state.threadId) {
+    if (initialThreadId || this.state.threadId) {
       const runId = this.state.runId as string;
-      const threadId = this.state.threadId as string;
+      const threadId = (initialThreadId || this.state.threadId) as string;
       this.state.setStatusMessage('checking status...');
-      const assistantResponse = await fetchAssistantResponse(runId, threadId, this.state.setStatusMessage, this.state.setProgress, 10);
-      
+      const assistantResponse = await fetchAssistantResponse(initialThreadId ? "" : runId, threadId, this.state.setStatusMessage, this.state.setProgress, 10);
+      console.log("RESPUESTA ASSISTANT", assistantResponse)
       this.state.setStatusMessage('Run complete...');
       this.state.assistantResponseReceived = true;
       this.state.setStatusMessage('Received messages...');
       
       // Add the assistant's response to the messages
-      const newMessage = { role: 'assistant', content: assistantResponse };
+      const newMessage = { role: 'assistant', content: assistantResponse.message };
       this.state.setStatusMessage('Adding messages to chat...');
       
-      this.state.messages = [...this.state.messages, newMessage];
+
+      let messages = initialThreadId 
+        ? assistantResponse.history.map(message => ({
+            role: message.role, 
+            content: message.content[0].text.value
+          }))
+        : [...this.state.messages, newMessage];
+
+      // Si es necesario, invierte los mensajes
+      if (initialThreadId) {
+        messages = messages.reverse(); 
+        messages = messages.slice(1)
+      }
+
+      this.state.messages = messages;
       this.state.setChatMessages(this.state.messages);
       this.state.setIsLoadingFirstMessage(false);
       //this.state.setProgress(0);
+
+      // Update the localStorage with the new messages
+      this.updateLocalStorage(this.state.threadId as string, this.state.messages);
 
     } else {
       console.error('RunId or ThreadId is null. Current state:', this.state);
@@ -255,9 +301,12 @@ async sendMessage(input: string, files: File[], fileDetails: any[]): Promise<voi
       
       
       // Add the assistant's response to the messages
-      const newAssistantMessage = { role: 'assistant', content: response };
+      const newAssistantMessage = { role: 'assistant', content: response.message };
       this.state.messages = [...this.state.messages, newAssistantMessage];
       this.state.setChatMessages(this.state.messages);
+
+      // Update the localStorage with the new messages
+      this.updateLocalStorage(this.state.threadId as string, this.state.messages);
       
     } else {
       console.error('ThreadId or AssistantId is null');

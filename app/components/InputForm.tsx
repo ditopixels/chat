@@ -76,7 +76,7 @@ const InputForm: React.FC<Props> = ({ input, setInput, inputRef, formRef, disabl
   };
 
 return (
-  <div className="fixed bottom-0 flex w-full flex-col items-center space-y-3 bg-gradient-to-b from-transparent via-gray-100 to-gray-100 p-5 pb-3 sm:px-0">
+  <div className="absolute bottom-0 flex w-full flex-col items-center space-y-3 bg-gradient-to-b from-transparent via-gray-100 to-gray-100 p-5 pb-3 sm:px-0">
     <div className="flex flex-col items-stretch w-full max-w-screen-md">
       <div className="flex flex-wrap items-center space-x-2 mb-2">
         {chatFileDetails.map((file) => (

@@ -1,7 +1,6 @@
 // useChatState.ts
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ChatManager from '../services/ChatManager';
-
 
 type FileDetail = {
   name: string;
@@ -9,14 +8,17 @@ type FileDetail = {
   size: number;
 };
 
+type ThreadHistory = {
+  threadId: string;
+  messages: { role: string; content: string }[];
+};
+
 export const useChatState = () => {
-  
-  
   const [assistantName, setAssistantName] = useState('');
   const [assistantModel, setAssistantModel] = useState('gpt-3.5-turbo-1106');
   const [assistantDescription, setAssistantDescription] = useState('');
   const [inputmessage, setInputmessage] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: string; content: any; }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: string; content: any }[]>([]);
   const [chatStarted, setChatStarted] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -35,7 +37,30 @@ export const useChatState = () => {
   const [isLoadingFirstMessage, setIsLoadingFirstMessage] = useState(false);
   const [chatUploadedFiles, setChatUploadedFiles] = useState<File[]>([]);
   const [chatFileDetails, setChatFileDetails] = useState<FileDetail[]>([]);
-  const [fileIds, setFileIds] = useState<string[]>([]); 
+  const [fileIds, setFileIds] = useState<string[]>([]);
+
+  // Estado para manejar el historial de hilos
+  const [threadHistory, setThreadHistory] = useState<ThreadHistory[]>([]);
+  
+  // Función para cargar hilos desde localStorage solo si tienen mensajes
+  const loadThreadsFromLocalStorage = () => {
+    // Obtiene los hilos almacenados en el localStorage
+    const storedThreads = JSON.parse(localStorage.getItem('chatThreads') || '[]');
+  
+    // Filtra los hilos que tengan al menos un mensaje con role 'user'
+    const validThreads = storedThreads.filter((thread: ThreadHistory) => 
+      thread.messages && thread.messages.some((message: any) => message.role === 'user')
+    );
+  
+    // Actualiza el estado con los hilos válidos
+    setThreadHistory(validThreads);
+  
+  };
+
+  // Efecto para cargar los hilos desde localStorage al inicializar
+  useEffect(() => {
+    loadThreadsFromLocalStorage();
+  }, [chatMessages]);
 
 
   return {
@@ -55,8 +80,7 @@ export const useChatState = () => {
     counter,
     inputRef,
     formRef,
-    initialThreadMessage, 
-    setInitialThreadMessage,
+    initialThreadMessage, setInitialThreadMessage,
     chatManager, setChatManager,
     isMessageLoading, setIsMessageLoading,
     progress, setProgress,
@@ -64,7 +88,6 @@ export const useChatState = () => {
     chatUploadedFiles, setChatUploadedFiles,
     chatFileDetails, setChatFileDetails,
     fileIds, setFileIds,
-    
-
+    threadHistory, setThreadHistory,
   };
 };
